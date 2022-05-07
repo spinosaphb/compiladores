@@ -66,6 +66,7 @@ class Language:
         self.productions = new_lang.productions
         for word, productions in new_lang.productions.items():
             setattr(self, word, productions)
+        return self
     
 
     def _check_recursion(self, word, first_word):
@@ -85,3 +86,15 @@ class Language:
         return True in [
             self._check_recursion(word, prod[0])
             for prod in self.productions[word]]
+
+
+    def first(self, X):
+        first_ = []
+        if X in self.terminals:
+            return [X]
+        for production in self.productions[X]:
+            if production[0] not in self.productions:
+                first_.append(production[0])
+            else:
+                first_ += self.first(production[0])
+        return first_
