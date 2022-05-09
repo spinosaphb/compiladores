@@ -9,12 +9,12 @@ class Language:
         for word, rules in rules.items():
             self.productions[word] = rules
             setattr(self, word, rules)
-        
+
         self.terminals = terminals
         self.no_terminals = no_terminals
-        self.void = void_symbol 
+        self.void = void_symbol
 
-        self._first, self._follow = {}, {}
+        self._first_all, self._follow_all = None, None
 
 
     def __repr__(self) -> str:
@@ -23,7 +23,7 @@ class Language:
 
     def _remove_left_single_recursion(self, word, inplace=False):
         new_lang = copy.deepcopy(self)
-    
+
         WORD_LINE = f'{word}\''
 
         productions = getattr(new_lang, word)
@@ -44,13 +44,14 @@ class Language:
 
         if not inplace:
             return new_lang
-        
+
         self.productions = new_lang.productions
         for word, productions in new_lang.productions.items():
             setattr(self, word, productions)
-    
+
 
     def remove_left_recursion(self, word = None, inplace=False):
+        """Remove left recursion for a specific word rule"""
         if word is not None:
             return self._remove_left_single_recursion(word, inplace)
         
@@ -62,12 +63,12 @@ class Language:
         
         if not inplace:
             return new_lang
-        
+ 
         self.productions = new_lang.productions
         for word, productions in new_lang.productions.items():
             setattr(self, word, productions)
         return self
-    
+
 
     def _check_recursion(self, word, first_word):
         if first_word not in self.productions:
@@ -83,12 +84,18 @@ class Language:
 
 
     def isrecursive(self, word: str) -> bool:
+        """
+        Check if word rule provide a left recursion
+        """
         return True in [
             self._check_recursion(word, prod[0])
             for prod in self.productions[word]]
 
 
     def first(self, X):
+        """
+        Calculate the first of term X
+        """
         first_ = []
         if X in self.terminals:
             return [X]
@@ -97,4 +104,50 @@ class Language:
                 first_.append(production[0])
             else:
                 first_ += self.first(production[0])
-        return first_
+        return list(set(first_))
+      
+
+    def first_all(self):
+        """
+        Get first set for all word rules
+        """
+        if self._first_all is None:
+            self._first_all = {
+                word: self.first(word)
+                for word in self.productions.keys()
+            }
+        return self._first_all.copy()
+
+
+    def follow(self, X):
+        """
+        Calculate the follow of term X
+        """
+        if self._first_all is None:
+            self.first_all()
+
+        follow_ = []
+        for rule in self.productions:
+            for production in self.productions[rule]:
+                if X not in production:
+                    continue
+                last_term = production[-1]
+                follow_ += [self.void] if production.index(X)+1 == len(production) \
+                        else self._first_all[last_term] if last_term in self._first_all \
+                        else [last_term]
+
+                if rule != X and self.void in follow_:
+                    follow_ += self.follow(rule)
+
+        return list(set(follow_))
+
+
+    def follow_all(self):
+        """Get follow set for all word rules
+        """
+        if self._follow_all is None:
+            self._follow_all = {
+                word: self.follow(word)
+                for word in self.productions.keys()
+            }
+        return self._follow_all.copy()
