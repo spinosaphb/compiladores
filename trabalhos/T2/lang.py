@@ -4,12 +4,13 @@ class Language:
     """
     Classe para representar uma linguagem
     """
-    def __init__(self, terminals, no_terminals, void_symbol='#', **rules: dict):
+    def __init__(self, terminals, no_terminals, accept_state = '$', void_symbol='#', **rules: dict):
         self.productions = {}
         for word, rules in rules.items():
             self.productions[word] = rules
             setattr(self, word, rules)
 
+        self.accept_state = accept_state
         self.terminals = terminals
         self.no_terminals = no_terminals
         self.void = void_symbol
@@ -96,15 +97,15 @@ class Language:
         """
         Calculate the first of term X
         """
-        first_ = []
+        first_ = set()
         if X in self.terminals:
-            return [X]
+            return {X}
         for production in self.productions[X]:
             if production[0] not in self.productions:
-                first_.append(production[0])
+                first_.add(production[0])
             else:
-                first_ += self.first(production[0])
-        return list(set(first_))
+                first_.update(self.first(production[0]))  
+        return first_ - {self.void}
       
 
     def first_all(self):
@@ -126,20 +127,28 @@ class Language:
         if self._first_all is None:
             self.first_all()
 
-        follow_ = []
+        follow_ = set()
         for rule in self.productions:
             for production in self.productions[rule]:
                 if X not in production:
                     continue
-                last_term = production[-1]
-                follow_ += [self.void] if production.index(X)+1 == len(production) \
-                        else self._first_all[last_term] if last_term in self._first_all \
-                        else [last_term]
+
+                X_index = production.index(X)
+                follow_idx = X_index+1
+
+                if follow_idx == len(production):
+                    follow_.add(self.void)
+                else:
+                    follow_term = production[follow_idx]
+                    if follow_term in self._first_all:
+                        follow_ = follow_.union(self._first_all[follow_term])  
+                    else:
+                        follow_.add(follow_term)
 
                 if rule != X and self.void in follow_:
-                    follow_ += self.follow(rule)
+                    follow_ = follow_.union(self.follow(rule)) 
 
-        return list(set(follow_))
+        return follow_-{self.void}
 
 
     def follow_all(self):
