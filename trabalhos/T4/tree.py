@@ -16,6 +16,27 @@ class Tree:
     def __totree(__object: 'Tree'): return __object if isinstance(__object, Tree) else Tree(__object)
 
 
+    def __eq__(self, __o: object) -> bool:
+        if isinstance(__o, Tree):
+            return Tree.__isequeal(self, __o)
+        return False
+
+    @staticmethod
+    def __isequeal(t1: 'Tree', t2: 'Tree'):
+        if t1 is None and t2 is None:
+            return True
+    
+        if t1 is not None and t2 is not None:
+            return (
+                (t1.value == t2.value) and
+                Tree.__isequeal(t1.left, t2.left)
+                and
+                Tree.__isequeal(t1.right, t2.right)
+            )
+        
+        return False        
+
+
     @staticmethod
     def _clone_tree(root: 'Tree'):
         if root is None:
@@ -79,6 +100,7 @@ class Tree:
 
     @staticmethod
     def from_expression(input_: str, verbose=False) -> 'Tree':
+        
         main_stack = Stack()
         worker_stack = Stack()
         op = ''
@@ -94,12 +116,7 @@ class Tree:
                     worker_stack.push(Tree(value=father, left=left, right=right))
                     break
                 worker_stack.push(son)
-            
-            exp = worker_stack.pop()
-            main_stack.push(exp)
-            
-            if verbose: exp.bshow()
-
+              
         for char in input_:    
             if char in ['(', ',', ')']:
                 if op: main_stack.push(op)
@@ -107,4 +124,7 @@ class Tree:
                 elif char == ')': unstack()
                 op = '' 
             else: op += char  
-        return main_stack.pop()      
+        
+        exp_tree: Tree = worker_stack.pop()
+        if verbose: exp_tree.bshow()
+        return exp_tree
