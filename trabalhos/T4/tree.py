@@ -1,3 +1,5 @@
+import re
+
 class Stack(list):
     def push(self, __object):
         self.append(__object)
@@ -6,11 +8,27 @@ class Stack(list):
 
 class Tree:
 
-    def __init__(self, value, left: 'Tree' = None, right: 'Tree' = None):
+    def __init__(self, value, left: 'Tree' = None, right: 'Tree' = None, father: 'Tree' = None, color: int = None):
         self.value = value
         self._left: Tree = self.__totree(left) if left else None 
         self._right: Tree = self.__totree(right) if right else None
+        self._father: Tree = self.__totree(father) if father else None
+
+        if self._left:
+            self._left._father = self
         
+        if self._right:
+            self._right._father = self
+
+        self._color = color
+
+        left_len = len(self._left) if self._left else 0
+        right_len = len(self._right) if self._right else 0
+        self._len = max(left_len, right_len) + 1
+
+    def __len__(self) -> int:
+        return self._len
+
 
     @staticmethod
     def __totree(__object: 'Tree'): return __object if isinstance(__object, Tree) else Tree(__object)
@@ -41,11 +59,18 @@ class Tree:
     def _clone_tree(root: 'Tree'):
         if root is None:
             return None
-        copy = Tree(root.value)
-        if root.left:
-            copy.left = Tree._clone_tree(root.left) 
-        if root.right:
-            copy.right = Tree._clone_tree(root.right)
+        copy = Tree(
+            root.value,
+            left=Tree._clone_tree(root.left),
+            right=Tree._clone_tree(root.right),
+            father=root._father,
+            color=root._color
+        )
+        # if root.left:
+        #     copy.left = Tree._clone_tree(root.left) 
+        # if root.right:
+        #     copy.right = Tree._clone_tree(root.right)
+        
         return copy
 
 
@@ -55,6 +80,7 @@ class Tree:
             self.left.printtree()
         if self.right:
             self.right.printtree()
+
 
     @property
     def left(self) -> 'Tree': return self._left
@@ -91,8 +117,10 @@ class Tree:
         if not node:
             print()
             return
-
-        print(node.value)
+        father = node._father.value if node._father else None
+        print(f'|{node.value}|{father}|', end='')
+        color = f'({node._color})' if node._color else ''
+        print(color)
 
         if node and (node.left or node.right):
             Tree._bshow(node.left, heritage + "l")
@@ -116,7 +144,8 @@ class Tree:
                     worker_stack.push(Tree(value=father, left=left, right=right))
                     break
                 worker_stack.push(son)
-              
+            main_stack.push(worker_stack.pop())
+
         for char in input_:    
             if char in ['(', ',', ')']:
                 if op: main_stack.push(op)
@@ -125,6 +154,27 @@ class Tree:
                 op = '' 
             else: op += char  
         
-        exp_tree: Tree = worker_stack.pop()
-        if verbose: exp_tree.bshow()
-        return exp_tree
+        return main_stack.pop()
+
+
+    def subtrees(self):
+        subtrees_ = []
+        if self.left:
+            subtrees_.append(self._clone_tree(self.left))
+        if self.right:
+            subtrees_.append(self._clone_tree(self.right))
+        return subtrees_
+
+
+    def leaves(self):
+        leafs = []
+        def _get_leaf_nodes(node: 'Tree'):
+            if node is not None:
+                if node.left or node.right:
+                    if node.left: _get_leaf_nodes(node.left)
+                    if node.right: _get_leaf_nodes(node.right)
+                else:
+                    leafs.append(node)
+        _get_leaf_nodes(self)
+        return leafs
+
