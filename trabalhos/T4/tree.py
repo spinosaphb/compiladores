@@ -1,18 +1,19 @@
 import re
 
-class Stack(list):
-    def push(self, __object):
-        self.append(__object)
-
-    def isempty(self): return not self
+from stack import Stack
 
 class Tree:
 
     def __init__(self, value, left: 'Tree' = None, right: 'Tree' = None, father: 'Tree' = None, color: int = None):
         self.value = value
-        self._left: Tree = self.__totree(left) if left else None 
+        self._left: Tree = self.__totree(left) if left else None
         self._right: Tree = self.__totree(right) if right else None
         self._father: Tree = self.__totree(father) if father else None
+
+        self.tile_pattern = []
+        self.tile_root = True
+        self.pattern = None
+        self.value_view = None
 
         if self._left:
             self._left._father = self
@@ -25,6 +26,71 @@ class Tree:
         left_len = len(self._left) if self._left else 0
         right_len = len(self._right) if self._right else 0
         self._len = max(left_len, right_len) + 1
+
+    @staticmethod
+    def get_tile_tree(tile: 'list[Tree]'):
+        root_tile = list(filter(lambda elem: elem.tile_root, tile))[0]
+        root_  = Tree(root_tile.value)
+        def create_tree(tile_root: 'Tree', root_cp):
+            if tile_root.left in tile:
+                root_cp.left = Tree(tile_root.left.value, father=root_cp)
+                create_tree(tile_root.left, root_cp.left)
+            if tile_root.right in tile:
+                root_cp.right = Tree(tile_root.right.value, father=root_cp)
+                create_tree(tile_root.right, root_cp.right)
+        create_tree(root_tile, root_)
+        return root_
+        
+    
+    def print_tiles(self):
+        tiles: list[Tree] = []
+        def _print_tiles(root: 'Tree'):
+            if root:
+                _print_tiles(root.left)
+                tile: list[Tree] = root.tile_pattern
+                root_tile = None
+                for node in tile:
+                    if node.tile_root:
+                        root_tile = node
+                        break
+                if root_tile not in tiles:
+                    tiles.append(root_tile)
+                _print_tiles(root.right)
+        
+        _print_tiles(self)
+
+        msg = "Padrões escolhidos:"
+        print('='*len(msg), msg, '='*len(msg), sep='\n')
+        for tile in map(lambda tile: self.get_tile_tree(tile.tile_pattern), tiles):
+            tile.bshow()
+            print('----------------')
+        cost = self.get_cost(tiles)
+        print(f"Custo Total: {cost}")
+
+
+    def get_cost(self, root_tiles: 'list[Tree]'):
+        cost = 0
+        for tile in root_tiles:
+            if tile.value == "MOVE":
+                if tile.tile_pattern == ["MOVE", "MEM", "MEM"]:
+                    cost+= 2
+                else: cost += 1
+            elif re.match(r'CONST.*?', tile.value):
+                cost += 1
+            elif tile.value in ["+", "-", "*", "/", "MEM"]:
+                cost += 1
+        return cost
+
+
+    def get_value_view(self, indent):
+        if (self.value_view is not None):
+            return self.value_view
+        else: 
+            return indent
+
+
+    def __hash__(self) -> int:
+        return hash(str(self))
 
     def __len__(self) -> int:
         return self._len
@@ -66,10 +132,6 @@ class Tree:
             father=root._father,
             color=root._color
         )
-        # if root.left:
-        #     copy.left = Tree._clone_tree(root.left) 
-        # if root.right:
-        #     copy.right = Tree._clone_tree(root.right)
         
         return copy
 
@@ -118,7 +180,7 @@ class Tree:
             print()
             return
         father = node._father.value if node._father else None
-        print(f'|{node.value}|{father}|', end='')
+        print(f'|{node.value}|{father}', end='')
         color = f'({node._color})' if node._color else ''
         print(color)
 
@@ -178,3 +240,19 @@ class Tree:
         _get_leaf_nodes(self)
         return leafs
 
+
+    def get_patterns_tiles(self) -> 'list[Tree]':
+        """
+        Return a list of patterns
+        """
+        res = []
+
+        def _get_tiles(root: 'Tree'):
+            if root:
+                _get_tiles(root.left)
+                if root.tile_root:
+                    res.append([root, root.pattern])
+                _get_tiles(root.right)
+
+        _get_tiles(self)
+        return res
